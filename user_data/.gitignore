@@ -1,0 +1,6 @@
+*.sqlite*
+backtest_results
+data
+hyperopt_results
+logs
+
