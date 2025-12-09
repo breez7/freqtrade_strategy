@@ -61,12 +61,11 @@ class VolumeStrategy(IStrategy):
     # Minimal ROI designed for the strategy.
     minimal_roi = {
         "120": 0.02, # 120분 경과 후: 2% 수익이면 청산
-        "60": 0.05,  # 60분 경과 후: 5% 수익이면 청산
-        "0": 0.10,   # 0분 경과(진입 직후): 10% 수익이면 청산
+    #    "60": 0.05,  # 60분 경과 후: 5% 수익이면 청산
     }
 
     # Optimal stoploss designed for the strategy.
-    stoploss = -0.01
+    stoploss = -0.05
 
     # Trailing stoploss
     trailing_stop = False
@@ -84,11 +83,11 @@ class VolumeStrategy(IStrategy):
 
     # Hyperoptable parameters
     # Lookback for VWAP/Profile calculation
-    profile_period = IntParameter(20, 200, default=50, space="buy")
+    profile_period = IntParameter(20, 200, default=10, space="buy")
     
     # RSI for confirmation
-    buy_rsi = IntParameter(1, 50, default=30, space="buy")
-    sell_rsi = IntParameter(50, 100, default=70, space="sell")
+    buy_rsi = IntParameter(1, 50, default=15, space="buy")
+    sell_rsi = IntParameter(50, 100, default=85, space="sell")
 
     # Startup candle count
     startup_candle_count: int = 200
@@ -105,6 +104,15 @@ class VolumeStrategy(IStrategy):
             },
         },
     }
+
+    def leverage(self, pair: str, current_time: datetime,
+                 current_rate: float, proposed_leverage: float, max_leverage: float,
+                 entry_tag: Optional[str], side: str, **kwargs) -> float:
+        """
+        Custom leverage mechanism.
+        """
+        # print(f"Leverage called for {pair}. Returning 10.0") 
+        return 20.0
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
@@ -141,7 +149,7 @@ class VolumeStrategy(IStrategy):
         dataframe['rsi'] = ta.RSI(dataframe)
 
         # 5. ADX to detect sideways market (ADX < 25 usually means weak trend / sideways)
-        dataframe['adx'] = ta.ADX(dataframe)
+        # dataframe['adx'] = ta.ADX(dataframe)
 
         return dataframe
 
@@ -157,9 +165,7 @@ class VolumeStrategy(IStrategy):
         
         dataframe.loc[
             (
-                # Market is sideways (ADX < 25)
-                (dataframe['adx'] < 25) &
-                # Price is near Value Area Low (e.g. within 1% or crossed it)
+
                 (dataframe['close'] <= dataframe['vp_val']) &
                 # Reversal confirmation: Price is starting to go up?
                 # Or simply "Buy the dip" at LVP support
@@ -172,8 +178,7 @@ class VolumeStrategy(IStrategy):
         # Short Entry (LVP Reversal from Top): Price touches VAH (Resistance).
         dataframe.loc[
             (
-                # Market is sideways (ADX < 25)
-                (dataframe['adx'] < 25) &
+
                 (dataframe['close'] >= dataframe['vp_vah']) &
                 (dataframe['rsi'] > self.sell_rsi.value) &
                 (dataframe['volume'] > 0)
@@ -203,20 +208,20 @@ class VolumeStrategy(IStrategy):
         """
         Based on TA indicators, populates the exit signal for the given dataframe
         """
-        # Exit Long if RSI is high or price hits POC (Mean Reversion)
+        # Exit Long if RSI is high or price hits VAH (Resistance)
         dataframe.loc[
             (
                 (dataframe['rsi'] > self.sell_rsi.value) |
-                (dataframe['close'] >= dataframe['vp_poc'])
+                (dataframe['close'] >= dataframe['vp_vah'])
             ),
             "exit_long",
         ] = 1
 
-        # Exit Short if RSI is low or price hits POC (Mean Reversion)
+        # Exit Short if RSI is low or price hits VAL (Support)
         dataframe.loc[
             (
                 (dataframe['rsi'] < self.buy_rsi.value) |
-                (dataframe['close'] <= dataframe['vp_poc'])
+                (dataframe['close'] <= dataframe['vp_val'])
             ),
             "exit_short",
         ] = 1
