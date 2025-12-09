@@ -51,9 +51,9 @@ class DivergencyStrategy(IStrategy):
     # Minimal ROI designed for the strategy.
     # Conservative quick profit taking
     minimal_roi = {
-        "60": 0.01,
-        "30": 0.02,
-        "0": 0.04,
+        "60": 0.02,
+        "30": 0.1,
+        "0": 0.1,
     }
 
     # Optimal stoploss designed for the strategy.
