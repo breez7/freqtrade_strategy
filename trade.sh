@@ -1,1 +1,1 @@
-docker-compose run --rm freqtrade trade --strategy VolumeStrategy --config user_data/config.json
+docker-compose run --service-ports --rm freqtrade trade --strategy VolumeStrategy --config user_data/config.json --logfile user_data/logs/freqtrade.log --db-url sqlite:////freqtrade/user_data/tradesv3.sqlite
